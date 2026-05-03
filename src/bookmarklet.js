@@ -56,7 +56,6 @@ async function fetchMeta() {
 async function fetchTweetDetail(focalTweetId, ct0, meta) {
   const variables = {
     focalTweetId,
-    referrer: "tweet",
     with_rux_injections: false,
     rankingMode: "Relevance",
     includePromotedContent: false,
