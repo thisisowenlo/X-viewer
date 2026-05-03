@@ -36,7 +36,8 @@ const shortcutBundle = await bundle("src/shortcut.js", { needsMeta: false });
 
 const html = (await readFile("src/index.template.html", "utf8"))
   .replaceAll("%BOOKMARKLET%", bookmarklet)
-  .replaceAll("%SHORTCUT_JS%", escapeForHtml(shortcutBundle));
+  .replaceAll("%SHORTCUT_JS%", escapeForHtml(shortcutBundle))
+  .replaceAll("%WORKER_JS%", escapeForHtml(await readFile("worker/index.js", "utf8")));
 
 await mkdir("public", { recursive: true });
 await writeFile("public/index.html", html);

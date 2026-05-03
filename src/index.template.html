@@ -9,6 +9,7 @@
   h1 { font-size: 22px; margin: 0 0 8px; }
   h2 { font-size: 17px; margin: 28px 0 8px; border-top: 1px solid #eee; padding-top: 18px; }
   h2:first-of-type { border-top: 0; padding-top: 0; }
+  h3 { font-size: 15px; margin: 18px 0 6px; }
   p, li { margin: 8px 0; }
   code { background: #f4f4f4; padding: 1px 4px; border-radius: 3px; font: 13px ui-monospace, Menlo, monospace; }
   .src { background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 8px 12px; font: 12px ui-monospace, Menlo, monospace; word-break: break-all; max-height: 240px; overflow: auto; white-space: pre-wrap; }
@@ -16,48 +17,73 @@
   .bookmarklet { display: inline-block; padding: 10px 16px; background: #1d9bf0; color: #fff; border-radius: 9999px; text-decoration: none; font-weight: 600; }
   ol, ul { padding-left: 22px; }
   .badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 9999px; font-size: 13px; font-weight: 600; }
+  .badge-warn { background: #fff3e0; color: #e65100; }
 </style>
 </head>
 <body>
 
 <h1>X-viewer</h1>
-<p>Pull the focal tweet + first batch of replies from an <code>x.com</code> page into clean markdown, ready to paste into Claude / Gemini / ChatGPT. All processing runs on your device using your own logged-in X session — no cookies leave the browser, no paid X API.</p>
+<p>Pull the focal tweet + replies from an <code>x.com</code> page into clean markdown, ready to paste into Claude / Gemini / ChatGPT. All processing runs on your device — no cookies leave the browser, no paid X API.</p>
 
-<h2>iPhone install (recommended) <span class="badge">iOS Shortcut</span></h2>
-<p>The bookmarklet path below is blocked by x.com's CSP on iOS Safari. Build a Shortcut instead — it lives in your share sheet for one-tap access.</p>
-<p><strong>How this version works (dual-path):</strong></p>
+<h2>iPhone install <span class="badge">iOS Shortcut · two paths</span></h2>
+<p>iOS Shortcuts has a quirk: <em>"Run JavaScript on Web Page"</em> only accepts a <strong>Safari Web Page</strong> input, not a URL. So we install <strong>two parallel Shortcuts</strong>, each with the same name <code>SendToClaude</code>:</p>
 <ul>
-  <li><strong>Shared from Safari</strong> on a logged-in tweet page → reads the already-rendered DOM (focal tweet + visible replies). Best fidelity.</li>
-  <li><strong>Shared from the X app</strong> (or any non-Safari source) → iOS opens the URL in a fresh logged-out WebView, so DOM scrape fails. Falls back to the public syndication API used by Twitter's embed widgets — focal tweet + parent thread + a small subset of replies, no auth required.</li>
+  <li><strong>Shortcut A</strong>: triggered from <strong>Safari</strong> share sheet → reads the rendered DOM directly. Best fidelity (focal tweet + replies that have scrolled into view).</li>
+  <li><strong>Shortcut B</strong>: triggered from the <strong>X app</strong> (or any URL share) → calls a Cloudflare Worker that fetches X's public syndication API. Smaller reply set, but doesn't break.</li>
 </ul>
-<p>iOS Shortcuts can't make authenticated requests to X (the Shortcut WebView lacks the HttpOnly auth_token cookie), so we side-step authentication via these two routes instead.</p>
+<p>iOS shows whichever shortcut applies based on the share-sheet input type, so you only ever see one <code>SendToClaude</code> option in any given context.</p>
 
+<h3>Step 1 · Deploy the Cloudflare Worker (one-time, ~5 min)</h3>
 <ol>
-  <li>Open the <strong>Shortcuts</strong> app on iPhone → tap <strong>+</strong> (top right) to create a new shortcut.</li>
-  <li>Tap <strong>Add Action</strong> → search <strong>"Run JavaScript on Web Page"</strong> → tap to add it.</li>
-  <li>In that action, replace the placeholder JavaScript with the snippet below (long-press → Select All → Copy → paste into the action).</li>
-  <li>Add another action: search <strong>"Copy to Clipboard"</strong>. By default it picks up the previous action's output (the markdown).</li>
-  <li>Add another action: search <strong>"Open URLs"</strong> → set the URL to <code>https://claude.ai/new</code>.</li>
-  <li>Tap the small <strong>i</strong> info icon at the bottom → enable <strong>"Show in Share Sheet"</strong> → set <strong>"Share Sheet Types"</strong> to <strong>Safari web pages</strong> only.</li>
-  <li>Rename the shortcut to <strong>SendToClaude</strong> → <strong>Done</strong>.</li>
+  <li>Go to <a href="https://dash.cloudflare.com/" target="_blank" rel="noopener">dash.cloudflare.com</a> → sign up (free) → <strong>Workers &amp; Pages</strong> → <strong>Create</strong>.</li>
+  <li>Pick <strong>Hello World</strong> template → name it e.g. <code>x-viewer-syndication</code> → Deploy.</li>
+  <li>After deploy: click <strong>Edit Code</strong>. Replace the entire file with the worker code below, then <strong>Save and Deploy</strong>.</li>
+  <li>Copy the deployment URL shown at the top — looks like <code>https://x-viewer-syndication.YOUR-NAME.workers.dev</code>. You'll paste this into Shortcut B.</li>
+  <li>Quick test: open <code>https://YOUR-WORKER-URL/?url=https://x.com/jack/status/20</code> in any browser. Should return markdown of Jack's first tweet.</li>
+</ol>
+<details>
+  <summary><strong>Worker source</strong> (paste into Cloudflare Worker editor)</summary>
+  <pre class="src">%WORKER_JS%</pre>
+</details>
+
+<h3>Step 2 · Build Shortcut A (Safari path)</h3>
+<ol>
+  <li>Shortcuts app → <strong>+</strong> new shortcut.</li>
+  <li>Add action: <strong>"Run JavaScript on Web Page"</strong>. Replace the placeholder JS with the snippet at the bottom of this page.</li>
+  <li>Add action: <strong>"Copy to Clipboard"</strong> (auto-takes previous output).</li>
+  <li>Add action: <strong>"Open URLs"</strong> → URL = <code>https://claude.ai/new</code>.</li>
+  <li>Settings (the ⓘ icon): toggle <strong>"Show in Share Sheet"</strong>. Set <strong>Share Sheet Types</strong> to <strong>Safari web pages</strong> only — uncheck everything else, especially URLs.</li>
+  <li>Name: <code>SendToClaude</code>.</li>
+</ol>
+
+<h3>Step 3 · Build Shortcut B (URL / X app path)</h3>
+<ol>
+  <li>Shortcuts app → <strong>+</strong> new shortcut.</li>
+  <li>Add action: <strong>"Get URLs from Input"</strong> (Shortcut Input → URLs).</li>
+  <li>Add action: <strong>"URL"</strong>. In the URL field, paste:
+    <code>https://YOUR-WORKER-URL/?url=</code>
+    then tap the field, choose <strong>Magic Variable</strong>, pick the URL from step 2.</li>
+  <li>Add action: <strong>"Get Contents of URL"</strong>. Method GET. Input: the URL from step 3.</li>
+  <li>Add action: <strong>"Copy to Clipboard"</strong>.</li>
+  <li>Add action: <strong>"Open URLs"</strong> → URL = <code>https://claude.ai/new</code>.</li>
+  <li>Settings (ⓘ): <strong>Show in Share Sheet</strong>. Share Sheet Types: <strong>URLs</strong> only.</li>
+  <li>Name: <code>SendToClaude</code> (same as A — iOS distinguishes by input type).</li>
 </ol>
 
 <details open>
-  <summary><strong>Shortcut JavaScript</strong> (paste into "Run JavaScript on Web Page")</summary>
+  <summary><strong>Shortcut A JavaScript</strong> (paste into Shortcut A's "Run JavaScript on Web Page")</summary>
   <pre class="src">%SHORTCUT_JS%</pre>
 </details>
 
-<h3>Using the Shortcut</h3>
-<ol>
-  <li>Make sure you're logged into <code>x.com</code> in Safari.</li>
-  <li>Open a tweet on <code>x.com</code> in Safari (URL contains <code>/status/&lt;id&gt;</code>).</li>
-  <li>Tap the share button → scroll the share sheet → tap <strong>SendToClaude</strong>.</li>
-  <li>First time: iOS asks "Allow this Shortcut to run JavaScript on x.com?" → Allow Always (saves the prompt every time).</li>
-  <li>The markdown lands on your clipboard and Claude.ai opens. Long-press in the Claude prompt box → Paste.</li>
-</ol>
+<h3>Using it</h3>
+<ul>
+  <li><strong>From Safari</strong> on a tweet detail page → share → <code>SendToClaude</code> → markdown to clipboard, Claude opens.</li>
+  <li><strong>From the X app</strong> → share → <code>SendToClaude</code> → Worker returns syndication markdown → clipboard, Claude opens.</li>
+  <li>First run of each: iOS asks for permission. Allow Always.</li>
+</ul>
 
 <h2>Desktop install (bookmarklet)</h2>
-<p>For desktop browsers (Chrome / Firefox / Safari macOS) the classic bookmarklet works — most desktop browsers don't enforce CSP on bookmarklets.</p>
+<p>For desktop browsers (Chrome / Firefox / Safari macOS) the bookmarklet works — desktop browsers generally don't enforce CSP on bookmarklets.</p>
 
 <div class="bookmarklet-wrap">
   <a class="bookmarklet" href="%BOOKMARKLET%">Send to Claude</a>
@@ -71,10 +97,9 @@
 
 <h2>Troubleshooting</h2>
 <ul>
-  <li><strong>Shortcut returns "ERROR: TweetDetail status=400"</strong> — X rotated their schema. Maintainer needs to refresh <code>src/meta.json</code> and rebuild.</li>
-  <li><strong>"ERROR: not logged into X in Safari"</strong> — log into <code>x.com</code> in Safari, then try again.</li>
-  <li><strong>"ERROR: not on an X tweet page"</strong> — open a single tweet (URL has <code>/status/</code>), not the home timeline.</li>
-  <li><strong>iOS Safari "cannot run JavaScript this way" on bookmarklet</strong> — that's x.com's CSP blocking it. Use the Shortcut path instead.</li>
+  <li><strong>"轉換錯誤 / cannot convert URL to Safari Web Page"</strong> — Shortcut A was triggered from a non-Safari source. Either restrict A's Share Sheet Types to Safari web pages only (so it stops appearing in X-app share sheet), or make sure Shortcut B is also installed (so X-app shares route there instead).</li>
+  <li><strong>Worker returns "syndication status=403/404"</strong> — tweet is deleted, private, age-restricted, or X-only.</li>
+  <li><strong>iOS Safari "cannot run JavaScript this way"</strong> on bookmarklet — that's x.com's CSP. Use the Shortcut path on iPhone.</li>
 </ul>
 
 </body>
