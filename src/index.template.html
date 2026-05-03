@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>X-viewer · send X threads to Claude</title>
+<style>
+  body { font: 16px/1.5 -apple-system, system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; color: #111; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  h2 { font-size: 17px; margin: 24px 0 8px; }
+  p, li { margin: 8px 0; }
+  code { background: #f4f4f4; padding: 1px 4px; border-radius: 3px; font: 13px ui-monospace, Menlo, monospace; }
+  .bookmarklet-wrap { background: #f8f8f8; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: center; }
+  .bookmarklet { display: inline-block; padding: 10px 16px; background: #1d9bf0; color: #fff; border-radius: 9999px; text-decoration: none; font-weight: 600; }
+  .src { background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 8px 12px; font: 12px ui-monospace, Menlo, monospace; word-break: break-all; max-height: 160px; overflow: auto; }
+  ol, ul { padding-left: 22px; }
+</style>
+</head>
+<body>
+
+<h1>X-viewer</h1>
+<p>Pull the focal tweet + first batch of replies on an <code>x.com</code> page into clean markdown, ready to paste into Claude / Gemini / ChatGPT. All processing runs on your device using your own logged-in X session.</p>
+
+<div class="bookmarklet-wrap">
+  <a class="bookmarklet" href="%BOOKMARKLET%">Send to Claude</a>
+  <p style="font-size: 13px; color: #666; margin-top: 8px;">Drag the button to your bookmarks bar (desktop) or follow the steps below (iPhone).</p>
+</div>
+
+<h2>iPhone install (Safari)</h2>
+<ol>
+  <li>Tap the share button on this page, then "Add Bookmark". Save it (any title is fine for now).</li>
+  <li>Open Bookmarks → Edit → tap your new bookmark.</li>
+  <li>Replace the Address with the JavaScript shown below (long-press the box, Select All, Copy, then paste into the Address field).</li>
+  <li>Rename the bookmark to something memorable like <code>SendToClaude</code>.</li>
+  <li>Done. To use: open a tweet on <code>x.com</code>, tap the address bar, type <code>send</code>, tap the bookmark suggestion.</li>
+</ol>
+
+<details>
+  <summary>Bookmarklet source (paste into the bookmark Address field)</summary>
+  <div class="src">%BOOKMARKLET%</div>
+</details>
+
+<h2>Desktop install</h2>
+<p>Drag the blue button above into your bookmarks bar.</p>
+
+<h2>Usage</h2>
+<ol>
+  <li>Make sure you're logged into <code>x.com</code> in this browser.</li>
+  <li>Open a tweet detail page (URL contains <code>/status/&lt;id&gt;</code>).</li>
+  <li>Trigger the bookmarklet. An overlay appears with the markdown.</li>
+  <li>Tap "Copy &amp; Open Claude" to copy and jump to claude.ai.</li>
+</ol>
+
+<h2>Troubleshooting</h2>
+<ul>
+  <li><strong>"TweetDetail failed: status=400"</strong> — X rotated their query schema. The site maintainer needs to refresh <code>/api/x-graphql-meta.json</code>.</li>
+  <li><strong>"Login required"</strong> — log into <code>x.com</code> in this browser, then try again.</li>
+  <li><strong>"Not on an X tweet page"</strong> — open a single tweet (URL contains <code>/status/</code>), not the home timeline.</li>
+  <li><strong>Clipboard didn't work on iPhone</strong> — long-press the textarea in the overlay, choose Select All → Copy, then tap Open Claude.</li>
+</ul>
+
+</body>
+</html>

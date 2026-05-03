@@ -1,0 +1,13 @@
+{
+  "name": "x-viewer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Mobile-side bookmarklet that extracts an X (Twitter) thread + replies into markdown for handoff to AI chatbots.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.0"
+  }
+}
