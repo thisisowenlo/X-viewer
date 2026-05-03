@@ -25,7 +25,12 @@
 
 <h2>iPhone install (recommended) <span class="badge">iOS Shortcut</span></h2>
 <p>The bookmarklet path below is blocked by x.com's CSP on iOS Safari. Build a Shortcut instead — it lives in your share sheet for one-tap access.</p>
-<p><strong>How this version works:</strong> the iPhone Shortcut reads the already-rendered DOM (focal tweet + replies that have scrolled into view) instead of calling X's API. iOS Shortcuts can't make authenticated requests (the WebView lacks the HttpOnly auth_token cookie), so we side-step authentication entirely. Trade-off: only replies you've already scrolled past are captured.</p>
+<p><strong>How this version works (dual-path):</strong></p>
+<ul>
+  <li><strong>Shared from Safari</strong> on a logged-in tweet page → reads the already-rendered DOM (focal tweet + visible replies). Best fidelity.</li>
+  <li><strong>Shared from the X app</strong> (or any non-Safari source) → iOS opens the URL in a fresh logged-out WebView, so DOM scrape fails. Falls back to the public syndication API used by Twitter's embed widgets — focal tweet + parent thread + a small subset of replies, no auth required.</li>
+</ul>
+<p>iOS Shortcuts can't make authenticated requests to X (the Shortcut WebView lacks the HttpOnly auth_token cookie), so we side-step authentication via these two routes instead.</p>
 
 <ol>
   <li>Open the <strong>Shortcuts</strong> app on iPhone → tap <strong>+</strong> (top right) to create a new shortcut.</li>
