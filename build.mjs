@@ -15,17 +15,19 @@ const result = await esbuild.build({
   write: false,
   legalComments: "none",
   charset: "utf8",
+  // Replace the free identifier META_URL_INJECTED with the configured URL.
+  // Using `define` keeps the substitution scoped to the identifier and avoids
+  // accidentally rewriting matching string literals elsewhere in the bundle.
+  define: {
+    META_URL_INJECTED: JSON.stringify(META_URL),
+  },
 });
 
 let bundled = result.outputFiles[0].text.trim();
 if (bundled.endsWith(";")) bundled = bundled.slice(0, -1);
-const beforeCount = (bundled.match(/__META_URL__/g) || []).length;
-bundled = bundled.replaceAll("__META_URL__", META_URL);
-const afterCount = (bundled.match(/__META_URL__/g) || []).length;
-if (beforeCount === 0 || afterCount > 0) {
-  console.error(
-    `FATAL: __META_URL__ substitution failed (before=${beforeCount}, after=${afterCount})`,
-  );
+
+if (!bundled.includes(JSON.stringify(META_URL).slice(1, -1))) {
+  console.error("FATAL: META_URL did not appear in bundled output");
   process.exit(1);
 }
 
@@ -56,4 +58,3 @@ await writeFile("public/build-info.json", JSON.stringify(buildInfo, null, 2));
 
 console.log(`META_URL: ${META_URL}`);
 console.log(`Bookmarklet: ${bookmarklet.length} bytes`);
-console.log(`Substituted ${beforeCount} placeholder(s)`);

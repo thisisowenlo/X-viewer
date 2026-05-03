@@ -1,7 +1,7 @@
 import { extractMarkdown } from "./extractor.js";
 
-// Replaced at build time by build.mjs.
-const META_URL = "__META_URL__";
+// Replaced at build time by esbuild's `define`.
+const META_URL = META_URL_INJECTED;
 
 // Public bearer token used by x.com web client; well-known, multi-year stable.
 const BEARER =
@@ -25,8 +25,8 @@ async function main() {
 
   const overlay = openOverlay("Fetching thread…");
   try {
-    if (!META_URL || META_URL === "__META_URL__" || META_URL.includes("your-host.example")) {
-      throw new Error(`META_URL not baked correctly. Got: ${JSON.stringify(META_URL)}`);
+    if (!META_URL || META_URL.includes("your-host.example")) {
+      throw new Error(`META_URL not configured. Got: ${JSON.stringify(META_URL)}`);
     }
     const meta = await fetchMeta();
     const json = await fetchTweetDetail(tweetId, ct0, meta);
