@@ -4,7 +4,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 const meta = JSON.parse(await readFile("src/meta.json", "utf8"));
 const metaLiteral = JSON.stringify(meta);
 
-async function bundle(entryPoint) {
+async function bundle(entryPoint, { needsMeta = true } = {}) {
   const result = await esbuild.build({
     entryPoints: [entryPoint],
     bundle: true,
@@ -20,7 +20,7 @@ async function bundle(entryPoint) {
   });
   let out = result.outputFiles[0].text.trim();
   if (out.endsWith(";")) out = out.slice(0, -1);
-  if (!out.includes(meta.queryId)) {
+  if (needsMeta && !out.includes(meta.queryId)) {
     console.error(`FATAL: queryId not found in ${entryPoint} bundle`);
     process.exit(1);
   }
@@ -30,7 +30,9 @@ async function bundle(entryPoint) {
 const bookmarkletBundle = await bundle("src/bookmarklet.js");
 const bookmarklet = "javascript:" + encodeURIComponent(bookmarkletBundle);
 
-const shortcutBundle = await bundle("src/shortcut.js");
+// Shortcut path is DOM-scrape — doesn't touch the GraphQL API at all, so it
+// doesn't need META baked in.
+const shortcutBundle = await bundle("src/shortcut.js", { needsMeta: false });
 
 const html = (await readFile("src/index.template.html", "utf8"))
   .replaceAll("%BOOKMARKLET%", bookmarklet)

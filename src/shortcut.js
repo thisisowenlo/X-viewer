@@ -1,78 +1,106 @@
-// Entry point for iOS Shortcuts "Run JavaScript on Web Page" action.
+// iOS Shortcut entry: DOM-scrape version.
 //
-// The Shortcut runtime injects this script into the active Safari tab with a
-// system-level privilege that bypasses the page's CSP (which is what blocks
-// the bookmarklet path on x.com). It exposes a global `completion(value)`
-// function we call to pass the extracted markdown back to the Shortcut, which
-// then puts it on the clipboard and opens Claude.
-
-import { extractMarkdown } from "./extractor.js";
-
-// Inlined at build time via esbuild define.
-const META = META_INJECTED;
-
-const BEARER =
-  "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAA8haGSeXJZAvT5wnxSAARSqfEs0M%3DTYfbDKbT3jJPCEVnMYqilB28NHfOPqkca3qaAxGfsyKCs0wRbw";
+// Background: iOS Shortcuts "Run JavaScript on Web Page" runs in a WebView
+// whose cookie jar lacks HttpOnly cookies (auth_token), so authenticated
+// fetches to X return 401. Workaround: skip the network entirely and read
+// the already-rendered DOM. Trade-off: only replies that have scrolled into
+// view are present, and selectors are fragile vs X redesigns.
 
 (async () => {
   try {
-    const tweetId = location.pathname.match(/^\/[^/]+\/status\/(\d+)/)?.[1];
-    if (!tweetId) {
-      completion("ERROR: not on an X tweet page (URL needs /status/<id>)");
-      return;
-    }
-    const ct0 = document.cookie.match(/(?:^|; )ct0=([^;]+)/)?.[1];
-    if (!ct0) {
-      completion("ERROR: not logged into X in Safari");
+    // Brief wait so React has a chance to paint late-arriving content.
+    await new Promise((r) => setTimeout(r, 250));
+
+    const articles = [
+      ...document.querySelectorAll('article[data-testid="tweet"]'),
+    ];
+    if (articles.length === 0) {
+      completion(
+        "ERROR: no tweet articles in DOM. Open the tweet detail page and try again.",
+      );
       return;
     }
 
-    const variables = {
-      focalTweetId: tweetId,
-      with_rux_injections: false,
-      rankingMode: "Relevance",
-      includePromotedContent: false,
-      withCommunity: true,
-      withQuickPromoteEligibilityTweetFields: true,
-      withBirdwatchNotes: true,
-      withVoice: true,
-      ...(META.variables ?? {}),
-    };
-    const params = new URLSearchParams({
-      variables: JSON.stringify(variables),
-      features: JSON.stringify(META.features ?? {}),
-    });
-    if (META.fieldToggles) {
-      params.set("fieldToggles", JSON.stringify(META.fieldToggles));
-    }
-    const url = `https://x.com/i/api/graphql/${META.queryId}/TweetDetail?${params.toString()}`;
+    const focalId = location.pathname.match(/\/status\/(\d+)/)?.[1];
+    const focalIdx = focalId
+      ? articles.findIndex((a) =>
+          [...a.querySelectorAll('a[href*="/status/"]')].some((l) =>
+            (l.getAttribute("href") || "").includes("/status/" + focalId),
+          ),
+        )
+      : 0;
 
-    const r = await fetch(url, {
-      method: "GET",
-      credentials: "include",
-      headers: {
-        authorization: `Bearer ${BEARER}`,
-        "x-csrf-token": ct0,
-        "x-twitter-active-user": "yes",
-        "x-twitter-auth-type": "OAuth2Session",
-        "x-twitter-client-language":
-          document.documentElement.lang || navigator.language || "en",
-        "content-type": "application/json",
-        accept: "*/*",
-      },
-    });
-    if (!r.ok) {
-      let body = "";
-      try {
-        body = " " + (await r.text()).slice(0, 200);
-      } catch {}
-      completion(`ERROR: TweetDetail status=${r.status}${body}`);
+    const tweets = articles.map(readArticle).filter((t) => t.text || t.handle);
+    if (tweets.length === 0) {
+      completion(
+        "ERROR: found articles but no readable text. X DOM may have changed.",
+      );
       return;
     }
-    const json = await r.json();
-    const md = extractMarkdown(json, { focalTweetId: tweetId });
-    completion(md);
+
+    const focal = tweets[focalIdx >= 0 ? focalIdx : 0];
+    const before = tweets.slice(0, focalIdx >= 0 ? focalIdx : 0);
+    const after = tweets.slice((focalIdx >= 0 ? focalIdx : 0) + 1);
+
+    completion(render(focal, before, after, location.href.split("?")[0]));
   } catch (e) {
     completion("ERROR: " + (e?.message ?? String(e)));
   }
 })();
+
+function readArticle(article) {
+  const textEl = article.querySelector('[data-testid="tweetText"]');
+  const text = textEl ? textEl.innerText.trim() : "";
+
+  let handle = "";
+  const userNameEl = article.querySelector('[data-testid="User-Name"]');
+  if (userNameEl) {
+    const handleSpan = [...userNameEl.querySelectorAll("span")].find((s) =>
+      s.textContent.trim().startsWith("@"),
+    );
+    if (handleSpan) {
+      handle = handleSpan.textContent.trim().replace(/^@/, "");
+    } else {
+      const link = userNameEl.querySelector('a[href^="/"][role="link"]');
+      const m = link?.getAttribute("href")?.match(/^\/([^/]+)/);
+      if (m) handle = m[1];
+    }
+  }
+
+  const time = article.querySelector("time[datetime]")?.getAttribute("datetime") || "";
+  return { handle, text, time };
+}
+
+function render(focal, before, after, sourceUrl) {
+  const lines = [];
+  const firstLine = (focal.text || "").split("\n")[0].slice(0, 80);
+  lines.push(`# @${focal.handle || "unknown"}: ${firstLine}`);
+  lines.push("");
+  lines.push(`> Source: ${sourceUrl}`);
+  if (focal.time) lines.push(`> Posted: ${focal.time}`);
+  lines.push("");
+  lines.push(focal.text);
+  lines.push("");
+
+  if (before.length > 0) {
+    lines.push("## Parent thread (above the focal tweet)");
+    lines.push("");
+    for (const t of before) {
+      lines.push(`### @${t.handle || "unknown"}`);
+      lines.push(t.text);
+      lines.push("");
+    }
+  }
+
+  if (after.length > 0) {
+    lines.push("## Replies (only the ones already scrolled into view)");
+    lines.push("");
+    for (const t of after) {
+      lines.push(`### @${t.handle || "unknown"}`);
+      lines.push(t.text);
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n").trimEnd() + "\n";
+}
