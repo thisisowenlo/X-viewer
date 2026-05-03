@@ -1,7 +1,9 @@
 import { extractMarkdown } from "./extractor.js";
 
-// Replaced at build time by esbuild's `define`.
-const META_URL = META_URL_INJECTED;
+// Inlined at build time via esbuild define. Eliminates the cross-origin
+// meta fetch (avoiding GitHub Pages CORS gaps) and works even on iOS
+// Safari pages with strict CSP that block external network reads.
+const META = META_INJECTED;
 
 // Public bearer token used by x.com web client; well-known, multi-year stable.
 const BEARER =
@@ -25,11 +27,7 @@ async function main() {
 
   const overlay = openOverlay("Fetching thread…");
   try {
-    if (!META_URL || META_URL.includes("your-host.example")) {
-      throw new Error(`META_URL not configured. Got: ${JSON.stringify(META_URL)}`);
-    }
-    const meta = await fetchMeta();
-    const json = await fetchTweetDetail(tweetId, ct0, meta);
+    const json = await fetchTweetDetail(tweetId, ct0, META);
     const md = extractMarkdown(json, { focalTweetId: tweetId });
     overlay.showResult(md);
   } catch (e) {
@@ -45,12 +43,6 @@ function getFocalTweetId() {
 function getCt0() {
   const m = document.cookie.match(/(?:^|; )ct0=([^;]+)/);
   return m ? m[1] : null;
-}
-
-async function fetchMeta() {
-  const r = await fetch(META_URL, { cache: "no-store" });
-  if (!r.ok) throw new Error(`meta fetch failed: ${r.status}`);
-  return r.json();
 }
 
 async function fetchTweetDetail(focalTweetId, ct0, meta) {

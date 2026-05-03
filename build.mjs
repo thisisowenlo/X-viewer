@@ -1,60 +1,63 @@
 import * as esbuild from "esbuild";
-import { readFile, writeFile, mkdir, copyFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 
-// Treat empty string as missing too (?? only catches null/undefined).
-const META_URL =
-  process.env.META_URL ||
-  "https://your-host.example/api/x-graphql-meta.json";
+const meta = JSON.parse(await readFile("src/meta.json", "utf8"));
+const metaLiteral = JSON.stringify(meta);
 
-const result = await esbuild.build({
-  entryPoints: ["src/bookmarklet.js"],
-  bundle: true,
-  minify: true,
-  format: "iife",
-  target: ["es2020"],
-  write: false,
-  legalComments: "none",
-  charset: "utf8",
-  // Replace the free identifier META_URL_INJECTED with the configured URL.
-  // Using `define` keeps the substitution scoped to the identifier and avoids
-  // accidentally rewriting matching string literals elsewhere in the bundle.
-  define: {
-    META_URL_INJECTED: JSON.stringify(META_URL),
-  },
-});
-
-let bundled = result.outputFiles[0].text.trim();
-if (bundled.endsWith(";")) bundled = bundled.slice(0, -1);
-
-if (!bundled.includes(JSON.stringify(META_URL).slice(1, -1))) {
-  console.error("FATAL: META_URL did not appear in bundled output");
-  process.exit(1);
+async function bundle(entryPoint) {
+  const result = await esbuild.build({
+    entryPoints: [entryPoint],
+    bundle: true,
+    minify: true,
+    format: "iife",
+    target: ["es2020"],
+    write: false,
+    legalComments: "none",
+    charset: "utf8",
+    define: {
+      META_INJECTED: metaLiteral,
+    },
+  });
+  let out = result.outputFiles[0].text.trim();
+  if (out.endsWith(";")) out = out.slice(0, -1);
+  if (!out.includes(meta.queryId)) {
+    console.error(`FATAL: queryId not found in ${entryPoint} bundle`);
+    process.exit(1);
+  }
+  return out;
 }
 
-const bookmarklet = "javascript:" + encodeURIComponent(bundled);
+const bookmarkletBundle = await bundle("src/bookmarklet.js");
+const bookmarklet = "javascript:" + encodeURIComponent(bookmarkletBundle);
 
-const html = (await readFile("src/index.template.html", "utf8")).replaceAll(
-  "%BOOKMARKLET%",
-  bookmarklet,
-);
+const shortcutBundle = await bundle("src/shortcut.js");
 
-await mkdir("public/api", { recursive: true });
+const html = (await readFile("src/index.template.html", "utf8"))
+  .replaceAll("%BOOKMARKLET%", bookmarklet)
+  .replaceAll("%SHORTCUT_JS%", escapeForHtml(shortcutBundle));
+
+await mkdir("public", { recursive: true });
 await writeFile("public/index.html", html);
 await writeFile("public/bookmarklet.txt", bookmarklet + "\n");
-await copyFile("src/meta.json", "public/api/x-graphql-meta.json");
-await writeFile(
-  "public/_headers",
-  "/api/x-graphql-meta.json\n  Access-Control-Allow-Origin: *\n  Cache-Control: max-age=300\n",
-);
+await writeFile("public/shortcut.js", shortcutBundle + "\n");
 
 const buildInfo = {
-  metaUrl: META_URL,
+  queryId: meta.queryId,
   builtAt: new Date().toISOString(),
   bookmarkletBytes: bookmarklet.length,
+  shortcutBytes: shortcutBundle.length,
   commit: process.env.GITHUB_SHA ?? null,
   ref: process.env.GITHUB_REF ?? null,
 };
 await writeFile("public/build-info.json", JSON.stringify(buildInfo, null, 2));
 
-console.log(`META_URL: ${META_URL}`);
+console.log(`queryId: ${meta.queryId}`);
 console.log(`Bookmarklet: ${bookmarklet.length} bytes`);
+console.log(`Shortcut JS: ${shortcutBundle.length} bytes`);
+
+function escapeForHtml(s) {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}

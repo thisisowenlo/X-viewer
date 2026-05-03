@@ -5,58 +5,70 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>X-viewer · send X threads to Claude</title>
 <style>
-  body { font: 16px/1.5 -apple-system, system-ui, sans-serif; max-width: 640px; margin: 24px auto; padding: 0 16px; color: #111; }
+  body { font: 16px/1.5 -apple-system, system-ui, sans-serif; max-width: 680px; margin: 24px auto; padding: 0 16px; color: #111; }
   h1 { font-size: 22px; margin: 0 0 8px; }
-  h2 { font-size: 17px; margin: 24px 0 8px; }
+  h2 { font-size: 17px; margin: 28px 0 8px; border-top: 1px solid #eee; padding-top: 18px; }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
   p, li { margin: 8px 0; }
   code { background: #f4f4f4; padding: 1px 4px; border-radius: 3px; font: 13px ui-monospace, Menlo, monospace; }
+  .src { background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 8px 12px; font: 12px ui-monospace, Menlo, monospace; word-break: break-all; max-height: 240px; overflow: auto; white-space: pre-wrap; }
   .bookmarklet-wrap { background: #f8f8f8; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: center; }
   .bookmarklet { display: inline-block; padding: 10px 16px; background: #1d9bf0; color: #fff; border-radius: 9999px; text-decoration: none; font-weight: 600; }
-  .src { background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 8px 12px; font: 12px ui-monospace, Menlo, monospace; word-break: break-all; max-height: 160px; overflow: auto; }
   ol, ul { padding-left: 22px; }
+  .badge { display: inline-block; background: #e8f5e9; color: #2e7d32; padding: 2px 8px; border-radius: 9999px; font-size: 13px; font-weight: 600; }
 </style>
 </head>
 <body>
 
 <h1>X-viewer</h1>
-<p>Pull the focal tweet + first batch of replies on an <code>x.com</code> page into clean markdown, ready to paste into Claude / Gemini / ChatGPT. All processing runs on your device using your own logged-in X session.</p>
+<p>Pull the focal tweet + first batch of replies from an <code>x.com</code> page into clean markdown, ready to paste into Claude / Gemini / ChatGPT. All processing runs on your device using your own logged-in X session — no cookies leave the browser, no paid X API.</p>
+
+<h2>iPhone install (recommended) <span class="badge">iOS Shortcut</span></h2>
+<p>The bookmarklet path below is blocked by x.com's CSP on iOS Safari. Build a Shortcut instead — it runs JavaScript with system-level privilege that bypasses the page CSP, and it lives in your share sheet for one-tap access.</p>
+
+<ol>
+  <li>Open the <strong>Shortcuts</strong> app on iPhone → tap <strong>+</strong> (top right) to create a new shortcut.</li>
+  <li>Tap <strong>Add Action</strong> → search <strong>"Run JavaScript on Web Page"</strong> → tap to add it.</li>
+  <li>In that action, replace the placeholder JavaScript with the snippet below (long-press → Select All → Copy → paste into the action).</li>
+  <li>Add another action: search <strong>"Copy to Clipboard"</strong>. By default it picks up the previous action's output (the markdown).</li>
+  <li>Add another action: search <strong>"Open URLs"</strong> → set the URL to <code>https://claude.ai/new</code>.</li>
+  <li>Tap the small <strong>i</strong> info icon at the bottom → enable <strong>"Show in Share Sheet"</strong> → set <strong>"Share Sheet Types"</strong> to <strong>Safari web pages</strong> only.</li>
+  <li>Rename the shortcut to <strong>SendToClaude</strong> → <strong>Done</strong>.</li>
+</ol>
+
+<details open>
+  <summary><strong>Shortcut JavaScript</strong> (paste into "Run JavaScript on Web Page")</summary>
+  <pre class="src">%SHORTCUT_JS%</pre>
+</details>
+
+<h3>Using the Shortcut</h3>
+<ol>
+  <li>Make sure you're logged into <code>x.com</code> in Safari.</li>
+  <li>Open a tweet on <code>x.com</code> in Safari (URL contains <code>/status/&lt;id&gt;</code>).</li>
+  <li>Tap the share button → scroll the share sheet → tap <strong>SendToClaude</strong>.</li>
+  <li>First time: iOS asks "Allow this Shortcut to run JavaScript on x.com?" → Allow Always (saves the prompt every time).</li>
+  <li>The markdown lands on your clipboard and Claude.ai opens. Long-press in the Claude prompt box → Paste.</li>
+</ol>
+
+<h2>Desktop install (bookmarklet)</h2>
+<p>For desktop browsers (Chrome / Firefox / Safari macOS) the classic bookmarklet works — most desktop browsers don't enforce CSP on bookmarklets.</p>
 
 <div class="bookmarklet-wrap">
   <a class="bookmarklet" href="%BOOKMARKLET%">Send to Claude</a>
-  <p style="font-size: 13px; color: #666; margin-top: 8px;">Drag the button to your bookmarks bar (desktop) or follow the steps below (iPhone).</p>
+  <p style="font-size: 13px; color: #666; margin-top: 8px;">Drag to your bookmarks bar.</p>
 </div>
 
-<h2>iPhone install (Safari)</h2>
-<ol>
-  <li>Tap the share button on this page, then "Add Bookmark". Save it (any title is fine for now).</li>
-  <li>Open Bookmarks → Edit → tap your new bookmark.</li>
-  <li>Replace the Address with the JavaScript shown below (long-press the box, Select All, Copy, then paste into the Address field).</li>
-  <li>Rename the bookmark to something memorable like <code>SendToClaude</code>.</li>
-  <li>Done. To use: open a tweet on <code>x.com</code>, tap the address bar, type <code>send</code>, tap the bookmark suggestion.</li>
-</ol>
-
 <details>
-  <summary>Bookmarklet source (paste into the bookmark Address field)</summary>
+  <summary>Bookmarklet source (raw)</summary>
   <div class="src">%BOOKMARKLET%</div>
 </details>
 
-<h2>Desktop install</h2>
-<p>Drag the blue button above into your bookmarks bar.</p>
-
-<h2>Usage</h2>
-<ol>
-  <li>Make sure you're logged into <code>x.com</code> in this browser.</li>
-  <li>Open a tweet detail page (URL contains <code>/status/&lt;id&gt;</code>).</li>
-  <li>Trigger the bookmarklet. An overlay appears with the markdown.</li>
-  <li>Tap "Copy &amp; Open Claude" to copy and jump to claude.ai.</li>
-</ol>
-
 <h2>Troubleshooting</h2>
 <ul>
-  <li><strong>"TweetDetail failed: status=400"</strong> — X rotated their query schema. The site maintainer needs to refresh <code>/api/x-graphql-meta.json</code>.</li>
-  <li><strong>"Login required"</strong> — log into <code>x.com</code> in this browser, then try again.</li>
-  <li><strong>"Not on an X tweet page"</strong> — open a single tweet (URL contains <code>/status/</code>), not the home timeline.</li>
-  <li><strong>Clipboard didn't work on iPhone</strong> — long-press the textarea in the overlay, choose Select All → Copy, then tap Open Claude.</li>
+  <li><strong>Shortcut returns "ERROR: TweetDetail status=400"</strong> — X rotated their schema. Maintainer needs to refresh <code>src/meta.json</code> and rebuild.</li>
+  <li><strong>"ERROR: not logged into X in Safari"</strong> — log into <code>x.com</code> in Safari, then try again.</li>
+  <li><strong>"ERROR: not on an X tweet page"</strong> — open a single tweet (URL has <code>/status/</code>), not the home timeline.</li>
+  <li><strong>iOS Safari "cannot run JavaScript this way" on bookmarklet</strong> — that's x.com's CSP blocking it. Use the Shortcut path instead.</li>
 </ul>
 
 </body>
