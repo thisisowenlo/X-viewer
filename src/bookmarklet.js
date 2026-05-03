@@ -25,8 +25,8 @@ async function main() {
 
   const overlay = openOverlay("Fetching thread…");
   try {
-    if (META_URL === "__META_URL__") {
-      throw new Error("META_URL not configured at build time");
+    if (!META_URL || META_URL === "__META_URL__" || META_URL.includes("your-host.example")) {
+      throw new Error(`META_URL not baked correctly. Got: ${JSON.stringify(META_URL)}`);
     }
     const meta = await fetchMeta();
     const json = await fetchTweetDetail(tweetId, ct0, meta);
